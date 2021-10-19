@@ -1,0 +1,13 @@
+---
+title: "p8105_hw3_jae2186"
+author: "jae2186 (Jennifer Estrada)"
+date: "10/20/2021"
+output:
+  github_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(DataCombine)
+```
+
