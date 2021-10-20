@@ -170,7 +170,7 @@ mean_hod
 
 This problem uses data made available on data.gov from the Behavioral Risk Factors Surveillence System (BRFSS) for Selected Metropolitan Area Risk Trends (SMART) from the years 2002-2010.
 
-```{r brfss1}
+```{r brfss_data}
 brfss_df <- force(brfss_smart2010) 
 
 brfss_clean <- 
@@ -258,7 +258,7 @@ brfss_ny
 
 ## Problem 3 - Accelerometer Data
 
-```{r accel}
+```{r accel_data}
 
 accel_df <-
   read_csv("./data/accel_data.csv") %>% 
@@ -275,4 +275,52 @@ accel_df <-
 
 The dataset consists of acceleramator activity data over the course of `r max(accel_df$week)` weeks, for a total of `r length(accel_df$day_id)` days, which was collected from a 63 year-old male admitted to Columbia's Center for Advanced Cardiac Care. For each day of observation it is noted what day of the week it was, including information from `r sum(accel_df$week_v_end)` weekdays. Finally, for each day there are 1440 activities reported, which account for each minute in the day, yielding `r format(35*1440, scientific = FALSE)` accelerometer observations for physical activity.
 
+```{r accel_table}
+accel_table <-
+  accel_df %>% 
+  group_by(day_id, week_v_end) %>% 
+  select(-day, -week) %>% 
+  mutate(sum = rowSums(across(activity_1:activity_1440))) %>% 
+  select(day_id, week_v_end, sum) %>% 
+  pivot_wider(names_from = "week_v_end", values_from = "sum") %>%
+  knitr::kable(col.names = c("Observation Day (Day ID)", "Weekday","Weekend"),
+               align = "ccc",
+               digits = 0,
+               caption = "Amount of activity per given observational day")
 
+accel_table
+```
+When looking at the above table noting the amount of activity recorded for a given observational day, the most notable feature are the 2 weekends in which the patient had days recording the minimal amount of activity (i.e. a default of 1440, or 1 baseline activity measured every minute). It appears that the patient's activity is evenly distributed between weekends and weekdays but generally hovers between 300000 and 500000. 
+
+```{r accel_plots}
+accel_plot <-
+  accel_df %>% 
+  pivot_longer(cols = starts_with("activity_"), 
+               names_prefix = "activity_",
+               names_to = "minute", 
+               values_to = "activity") %>% 
+  mutate(minute = parse_number(minute)) %>% 
+  ggplot(aes(y = activity, x = minute, color = day)) + 
+  geom_line() + 
+  labs(x = "Minute", y = "Activity") +
+  scale_x_continuous(breaks = seq(from = 0, to = 1440, by = 240))
+
+accel_plot
+
+accel_facet <-
+  accel_df %>% 
+  pivot_longer(cols = starts_with("activity_"), 
+               names_prefix = "activity_",
+               names_to = "minute", 
+               values_to = "activity") %>% 
+  mutate(minute = parse_number(minute)) %>% 
+  ggplot(aes(y = activity, x = minute, color = day)) + 
+  geom_point() + 
+  labs(x = "Minute", y = "Activity") +
+  scale_x_continuous(breaks = seq(from = 0, to = 1440, by = 240)) +
+  facet_grid(day ~ .) 
+
+accel_facet
+```
+
+Based on the first graph it is not readily apparent if there are any patterns between the different days of the weeks (in which Monday is noted to be day 1 and Sunday day 7). However, once all of the days are separated it is noted tat there are moments of more activity later in teh day during the majority of the week while most activity on Sunday is limited to the middle of the day (bottom graph). Furthermore, there are moments of increased activity earlier in the day during the week but is also has a later start on Sunday.
