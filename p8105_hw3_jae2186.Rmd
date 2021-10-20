@@ -20,8 +20,7 @@ knitr::opts_chunk$set(
 	out.width = "90%"
 )
 
-theme_set(theme_bw() + theme(legend.position = "bottom", 
-                             plot.caption= element_text(size = 6)))
+theme_set(theme_bw() + theme(plot.caption= element_text(size = 6)))
 
 options(
   ggplot2.continuous.colour = "viridis",
@@ -33,7 +32,6 @@ scale_colour_discrete = scale_color_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 
 ```
-
 
 ## Problem 1 - Instacart Data
 
@@ -121,8 +119,7 @@ instacart_df %>%
 
 Below is a table showing the three most popular items in each of the aisles categorized as “baking ingredients”, “dog food care”, and “packaged vegetables fruits”, with the number of times each item is ordered. 
 
-
-```{r popular_items, message=FALSE, warning=FALSE}
+```{r ic_pop_items, message=FALSE, warning=FALSE}
 
 pop_items <-
   instacart_df %>% 
@@ -146,10 +143,9 @@ pop_items <-
 pop_items
 ```
 
-
 Below is a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week.
 
-```{r mean_hr}
+```{r ic_mean_hr}
 
 mean_hod <- 
   instacart_df %>% 
@@ -170,6 +166,95 @@ mean_hod
 ```
 
 
-
-
 ## Problem 2 - BRFSS SMART 2010 Data
+
+This problem uses data made available on data.gov from the Behavioral Risk Factors Surveillence System (BRFSS) for Selected Metropolitan Area Risk Trends (SMART) from the years 2002-2010.
+
+```{r brfss1}
+brfss_df <- force(brfss_smart2010) 
+
+brfss_clean <- 
+  janitor::clean_names(brfss_df) %>% 
+  filter(topic == "Overall Health") %>% 
+  filter(response == "Excellent" |
+           response == "Very good" |
+           response == "Good" |
+           response == "Fair" |
+           response == "Poor"
+           ) %>% 
+  mutate(response = forcats::fct_relevel(response, c("Poor", "Fair", "Good", "Very good", "Excellent")))
+
+brfss_02 <-
+  filter(brfss_clean, year == 2002) %>% 
+  select(contains("location")) %>% 
+  group_by(locationabbr, locationdesc) %>% 
+  summarize(n_obs = n()) %>% 
+  count(locationabbr) %>% 
+  arrange(desc(n)) %>% 
+  filter(n > 6)
+
+brfss_10 <-
+  filter(brfss_clean, year == 2010) %>% 
+  select(contains("location")) %>% 
+  group_by(locationabbr, locationdesc) %>% 
+  summarize(n_obs = n()) %>% 
+  count(locationabbr) %>% 
+  arrange(desc(n)) %>% 
+  filter(n > 6)
+```
+
+Given the above data set it was noted that:
+
+* In 2002 there were `r length(brfss_02$locationabbr)` states observed at 7 or more locations including: `r brfss_02$locationabbr`.
+
+* In 2010 there were `r length(brfss_10$locationabbr)` states observed at 7 or more locations including: `r brfss_10$locationabbr`.
+
+* Between 2002 and 2010 there were `r length(brfss_10$locationabbr)- length(brfss_02$locationabbr)` more states with at least 7 observation sites; not all those originally with 7 or more sites in 2002 maintained these observation locations as CT dropped down to 5 locations.
+
+The following 2 plots further describe aspects of the data reported:
+
+```{r brfss_spaghetti}
+brfss_avg_val <-
+  filter(brfss_clean, response == "Excellent") %>% 
+  select(year, locationabbr, locationdesc, data_value) %>% 
+  group_by(year, locationabbr) %>% 
+  mutate(avg_val = mean(data_value)) %>% 
+  ggplot(aes(x = year, y = avg_val, color = locationabbr)) +
+  geom_line() +
+  theme(legend.position = "none") +
+  labs(
+    title = "Spaghetti plot of BRFSS data for observed US states from 2002-10", 
+    subtitle = "Average values of 'Excellent' responses to 'Overall Health' Questions", 
+    x = "Year",
+    y = "Average Value",
+    caption = "Data obatined from publically available 2002-2010 BRFSS SMART County Prevalence land line only data, from data.gov on 10/20/2021.")
+
+brfss_avg_val
+```
+
+```{r brfss_NY}
+brfss_ny <-
+  filter(brfss_clean, locationabbr == "NY" & year == "2006" |
+           locationabbr == "NY" &
+           year == "2010") %>% 
+  select(year, locationdesc, response, data_value) %>% 
+  group_by(year, locationdesc) %>% 
+  ggplot(aes(x = data_value, y = locationdesc)) + 
+  geom_density_ridges(scale = .85) +
+  facet_grid(. ~ year) +
+  labs(
+    title = "BRFSS data for observed NY counties in 2006 and 2010", 
+    subtitle = "Density plot of data values to 'Overall Health' Questions", 
+    x = "Data Value",
+    y = "New York County",
+    caption = "Data obatined from publically available 2002-2010 BRFSS SMART County Prevalence land line only data, from data.gov on 10/20/2021.") +
+  scale_y_discrete(
+    labels = c("Westchester", "Suffolk", "Queens", "New York", 
+               "Nassau","Monroe", "Kings", "Erie", "Bronx")
+  )
+  
+brfss_ny
+```
+
+## Problem 3 - Accelerometer Data
+
