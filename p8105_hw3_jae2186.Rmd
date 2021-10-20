@@ -6,8 +6,118 @@ output:
   github_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, message = FALSE, warning = FALSE}
 library(tidyverse)
-library(DataCombine)
+library(p8105.datasets)
+library(ggridges)
+library(lubridate)
+
+knitr::opts_chunk$set(
+	fig.asp = 0.75,
+	fig.width = 6,
+	message = FALSE,
+	warning = FALSE,
+	out.width = "90%"
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom", 
+                             plot.caption= element_text(size = 6)))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_color_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+
 ```
+
+
+## Problem 1 - Instacart Data
+
+```{r ic_description}
+
+instacart_df <- force(instacart)
+
+insta_ohod <-
+  instacart_df %>% 
+  group_by(order_hour_of_day) %>% 
+  summarize(n_obs = n(), n_orders = n_distinct(order_id)) %>% 
+  arrange(desc(n_orders)) %>% 
+  mutate(order_hour_of_day = hms::as_hms(3600 * order_hour_of_day))
+
+insta_dow <-
+  instacart_df %>% 
+  group_by(order_dow) %>% 
+  summarize(n_obs = n(), n_orders = n_distinct(order_id)) %>% 
+  arrange(desc(n_orders)) %>% 
+  mutate(order_dow = wday(order_dow + 1, label = TRUE, abbr = FALSE))
+
+# The above code for `insta_dow` works on the assumption that weekdays were coded to start on Sunday, which was coded as '0'.
+
+insta_dbo <-
+  instacart_df %>% 
+  group_by(days_since_prior_order) %>% 
+  summarize(n_obs = n(), n_orders = n_distinct(order_id)) %>% 
+  arrange(desc(n_orders))
+
+insta_prod_name <- 
+  instacart_df %>% 
+  select(product_name) %>% 
+  count(product_name, name = "prod_count") %>% 
+  arrange(desc(prod_count))
+
+insta_aisle <-
+  instacart_df %>% 
+  select(aisle) %>% 
+  count(aisle, name = "aisle_count") %>% 
+  arrange(desc(aisle_count))
+
+```
+
+This Instacart dataset has 15 variables describing `r instacart_df %>% group_by(order_id) %>% summarize(n_obs = n()) %>% count()` individual orders which included `r length(instacart_df$order_id)` items ordered; each order was made by a unique Instacart user during 2017. The data includes aspects regarding the timing the order including the time of day at which and day of the week on which orders were placed. For instance: 
+
+* Orders are typically made in the middle of the day, which is shown by the fact that the top 3 hourlong periods for orders were: `r insta_ohod[1,1]` (or 2 pm), `r insta_ohod[2,1]` (or 3 pm), and `r insta_ohod[3,1]` (or 1 pm). (Nearly half-a-day apart from the hour at which the fewest orders were placed: `r insta_ohod[24,1]`, or 4 am.)
+
+* Orders were placed most frequently on `r insta_dow[1,1]` while the fewest orders were placed on `r insta_dow[7,1]`.
+
+The data also consider characteristics of the order that were unique to the user (i.e. which number order this was for the shopper and the number of days since their last order). The data note that:
+
+* Most the of the orders were placed `r insta_dbo[1,1]` days (or about 1 month) following the previous order. This is in stark contrast to that fact that the second most frequent days between orders was `r insta_dbo[2,1]` days, or 1 week.
+
+Lastly, the dataset addresses details about the items in the cart, including the order in which items are put into the virtual carts, the name of the item, and the location of the item in the grocery store (i.e. aisle and department). Here are some quick notes on this dataset:
+
+* The data notes that there are `r instacart_df %>% group_by(product_id) %>% summarize(n_obs = n()) %>% count()` different products ordered, with "`r insta_prod_name[1,1]`" being the most common product ordered while items from the `r insta_aisle[1,1]` and `r insta_aisle[2,1]` aisles ordered from the most (with a difference of `r insta_aisle[1,2]-insta_aisle[2,2]` orders compared to the following aisle of `r insta_aisle[3,1]` which had `r insta_aisle[2,2]-insta_aisle[3,2]` fewer orders compared to `r insta_aisle[2,1]`).
+
+* When answering: <i>how many aisles are there, and which aisles are the most items ordered from? </i>
+  * <b>There are `r max(instacart$aisle_id)` aisles and, as previously noted, the top three aisles from which items were ordered included: 
+    * `r insta_aisle[1,1]` (with `r insta_aisle[1,2]` orders), 
+    * `r insta_aisle[2,1]` (with `r insta_aisle[2,2]` orders), and 
+    * `r insta_aisle[3,1]` (with `r insta_aisle[3,2]` orders). 
+  * Of note, these are all produce aisles. </b>
+  
+The following includes a plot that shows the number of items ordered in each aisle, limiting this to aisles with >10000 items ordered.
+
+```{r ic_num_items}
+
+instacart_df %>% 
+  count(aisle_id) %>% 
+  filter(n > 10000) %>% 
+  ggplot(aes(x = aisle_id, y = n)) + 
+  geom_point() + 
+  scale_y_continuous(trans = "log10", labels = scales::label_number()) +
+  scale_x_continuous(breaks = seq (0, 175, by = 25)) +
+  annotation_logticks(sides = "l") +
+  labs(
+    title = "Number of items ordered per aisle", 
+    subtitle = "Minimum of 10,000 items ordered", 
+    x = "Aisle Number",
+    y = "Items Ordered (log10 scale)",
+    caption = "Data obatined from “The Instacart Online Grocery Shopping Dataset 2017”, https://www.instacart.com/datasets/grocery-shopping-2017 on 10/20/2021.")
+
+```
+
+
+
 
