@@ -258,3 +258,21 @@ brfss_ny
 
 ## Problem 3 - Accelerometer Data
 
+```{r accel}
+
+accel_df <-
+  read_csv("./data/accel_data.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(
+    day = recode(day, `Monday` = "1", `Tuesday` = "2", `Wednesday` = "3", `Thursday` = "4",
+                 `Friday` = "5", `Saturday` = "6", `Sunday` = "7"),
+    day = parse_number(day),
+    week_v_end = ifelse(day <= 5, 1, 0)
+    ) %>% 
+  relocate(week, day_id, day, week_v_end)
+
+```
+
+The dataset consists of acceleramator activity data over the course of `r max(accel_df$week)` weeks, for a total of `r length(accel_df$day_id)` days, which was collected from a 63 year-old male admitted to Columbia's Center for Advanced Cardiac Care. For each day of observation it is noted what day of the week it was, including information from `r sum(accel_df$week_v_end)` weekdays. Finally, for each day there are 1440 activities reported, which account for each minute in the day, yielding `r format(35*1440, scientific = FALSE)` accelerometer observations for physical activity.
+
+
